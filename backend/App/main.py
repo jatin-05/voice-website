@@ -17,7 +17,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://voice-website.onrender.com"
+    "https://voice-website-7ups.onrender.com"
 
     
 ]
