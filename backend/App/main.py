@@ -9,8 +9,25 @@ import numpy as np
 from together import Together
 from dotenv import load_dotenv
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware 
 
 app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://voice-website.onrender.com"
+
+    
+]
+app.add_middleware(
+    CORSMiddleware ,
+    allow_origins =origins ,
+    allow_credentials =True ,
+    allow_methods =["*"] ,
+    allow_headers =["*"] ,
+)
 
 load_dotenv()
 client = Together(api_key=os.getenv('TOGETHER_API_KEY'))  # Ensure API key is correct

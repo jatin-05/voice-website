@@ -146,7 +146,7 @@ const App = () => {
 
     try {
       console.log("🚀 Sending image and query to backend...");
-      const response = await axios.post("http://127.0.0.1:8000/process", formData, {
+      const response = await axios.post(import.meta.env.VITE_API_URL, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("✅ Response received:", response.data);
