@@ -164,7 +164,10 @@ const App = () => {
 
   return (
     <div>
-      <h1>Speech & OCR Web App</h1>
+      <h1>Speech Web App</h1>
+      <h4>Trigger Word - Hey Assitant</h4>
+      <h4>To capture Img - Capture</h4>
+      <h5>Then say the queries you want to ask</h5>
       <p>Status: {listening ? "Listening for questions..." : "Waiting for trigger word..."}</p>
       <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }}></video>
     </div>
