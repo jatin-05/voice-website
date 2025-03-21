@@ -6,8 +6,10 @@ const App = () => {
   const capturedImageRef = useRef(null); 
   const queryRef = useRef(""); 
   const recognitionRef = useRef(null);
+  const triggerRecognitionRef = useRef(null);
   const isCapturingQueryRef = useRef(false); 
   const [listening, setListening] = useState(false);
+  const triggerListening = useRef(true);
   let silenceTimeout;
 
   const [capturingQuery, setCapturingQuery] = useState(false);
@@ -31,22 +33,33 @@ const App = () => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.lang = "en-US";
+    triggerRecognitionRef.current = new SpeechRecognition();
+    triggerRecognitionRef.current.continuous = true;
+    triggerRecognitionRef.current.lang = "en-US";
 
-    recognition.onresult = (event) => {
+    triggerRecognitionRef.current.onresult = (event) => {
       const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
       console.log("🔍 Trigger Word Heard:", transcript);
 
       if (transcript === "hey assistant") {
         speakText("I am listening...");
         // speakText("Say capture the image to xcapture and query to save them");
-        startSpeechRecognition(); // ✅ Start full recognition
+        setTimeout(() => {
+            triggerListening.current=false; 
+            triggerRecognitionRef.current.stop() ;
+            startSpeechRecognition(); // ✅ Start full recognition
+        }, 1000);
       }
     };
 
-    recognition.start();
+    triggerRecognitionRef.current.onend = () => {
+        console.log("🔄 Trigger recognition ended. Restarting...");
+        if(triggerListening.current==true){
+        triggerRecognitionRef.current.start();
+    }
+      };
+
+      triggerRecognitionRef.current.start();
     console.log("🎤 Listening for trigger word...");
   };
 
@@ -61,11 +74,11 @@ const App = () => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.lang = "en-US";
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.lang = "en-US";
 
-    recognition.onresult = (event) => {
+    recognitionRef.current.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript.trim();
         console.log("🎙️ Recognized:", transcript);
   
@@ -82,12 +95,19 @@ const App = () => {
           silenceTimeout = setTimeout(() => {
             console.log("⏳ Detected silence. Sending query:", queryRef.current);
             finalizeAndSend();
+            
+            console.log("started recognising")
           }, 2000); // 2 seconds silence
         }
       };
+
+      recognitionRef.current.onend = () => {
+        console.log("🔄 Trigger recognition ended. Restarting...");
+        recognitionRef.current.start();
+      };
   
-      recognition.start();
-      recognitionRef.current = recognition;
+      recognitionRef.current.start();
+   
       setListening(true);
       console.log("🎤 Now actively listening for questions...");
   };
