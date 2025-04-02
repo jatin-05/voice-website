@@ -9,13 +9,14 @@ const App = () => {
   const triggerRecognitionRef = useRef(null);
   const isCapturingQueryRef = useRef(false); 
   const [listening, setListening] = useState(false);
+  const [isCaptured, setIsCaptured] = useState(false);
   const triggerListening = useRef(true);
   let silenceTimeout;
 
   const [capturingQuery, setCapturingQuery] = useState(false);
 
   useEffect(() => {
-            startTriggerRecognition();
+      startTriggerRecognition();
       startCamera();
       setTimeout(() => {
         
@@ -41,7 +42,7 @@ const App = () => {
       const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
       console.log("🔍 Trigger Word Heard:", transcript);
 
-      if (transcript === "hey assistant") {
+      if (transcript === "assistant") {
         speakText("I am listening...");
         // speakText("Say capture the image to xcapture and query to save them");
         setTimeout(() => {
@@ -135,6 +136,10 @@ const App = () => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((blob) => {
         console.log("✅ Image captured and stored.");
+        // recognitionRef.current.stop();
+        speakText("captured");
+        // recognitionRef.current.start();
+        setIsCaptured(true) ;
         capturedImageRef.current = blob;
       }, "image/png");
     }
@@ -144,13 +149,13 @@ const App = () => {
     console.log("🔎 Checking stored values before sending...");
     console.log("Stored Image:", capturedImageRef.current);
     console.log("Stored Query:", queryRef.current);
-
+    
+    
     if (!capturedImageRef.current) {
-      speakText("No image found. Please capture an image first.");
+      speakText("No image");
       console.error("❌ Error: No image found.");
       return;
     }
-
     if (!queryRef.current.trim()) {
       speakText("No query found. Please say your query first.");
       console.error("❌ Error: No query found.");
@@ -172,6 +177,7 @@ const App = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("✅ Response received:", response.data);
+
       speakText(response.data.response);
     } catch (error) {
       console.error("❌ Error sending data:", error);
@@ -190,7 +196,7 @@ const App = () => {
       <h4>Trigger Word - Hey Assitant</h4>
       <h4>To capture Img - Capture</h4>
       <h5>Then say the queries you want to ask</h5>
-      <p>Status: {listening ? "Listening for questions..." : "Waiting for trigger word..."}</p>
+      <p>Status: {listening ? "Listening for questions..." : "Waiting for trigger word..."} {isCaptured? "an image is alredy captured say capture again to capture a new image " :"no image captured " } </p>
       <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }}></video>
     </div>
   );

@@ -6,14 +6,17 @@ const App = () => {
   const capturedImageRef = useRef(null); 
   const queryRef = useRef(""); 
   const recognitionRef = useRef(null);
+  const triggerRecognitionRef = useRef(null);
   const isCapturingQueryRef = useRef(false); 
   const [listening, setListening] = useState(false);
+  const [isCaptured, setIsCaptured] = useState(false);
+  const triggerListening = useRef(true);
   let silenceTimeout;
 
   const [capturingQuery, setCapturingQuery] = useState(false);
 
   useEffect(() => {
-            startTriggerRecognition();
+      startTriggerRecognition();
       startCamera();
       setTimeout(() => {
         
@@ -31,22 +34,33 @@ const App = () => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.lang = "en-US";
+    triggerRecognitionRef.current = new SpeechRecognition();
+    triggerRecognitionRef.current.continuous = true;
+    triggerRecognitionRef.current.lang = "en-US";
 
-    recognition.onresult = (event) => {
+    triggerRecognitionRef.current.onresult = (event) => {
       const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
       console.log("🔍 Trigger Word Heard:", transcript);
 
-      if (transcript === "hey assistant") {
+      if (transcript === "assistant") {
         speakText("I am listening...");
         // speakText("Say capture the image to xcapture and query to save them");
-        startSpeechRecognition(); // ✅ Start full recognition
+        setTimeout(() => {
+            triggerListening.current=false; 
+            triggerRecognitionRef.current.stop() ;
+            startSpeechRecognition(); // ✅ Start full recognition
+        }, 1000);
       }
     };
 
-    recognition.start();
+    triggerRecognitionRef.current.onend = () => {
+        console.log("🔄 Trigger recognition ended. Restarting...");
+        if(triggerListening.current==true){
+        triggerRecognitionRef.current.start();
+    }
+      };
+
+      triggerRecognitionRef.current.start();
     console.log("🎤 Listening for trigger word...");
   };
 
@@ -61,15 +75,17 @@ const App = () => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.lang = "en-US";
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.lang = "en-US";
 
-    recognition.onresult = (event) => {
+    recognitionRef.current.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript.trim();
         console.log("🎙️ Recognized:", transcript);
   
         if (transcript === "capture") {
+            queryRef.current = "" ; 
           captureImage();
         } else {
           queryRef.current += transcript + " ";
@@ -82,12 +98,19 @@ const App = () => {
           silenceTimeout = setTimeout(() => {
             console.log("⏳ Detected silence. Sending query:", queryRef.current);
             finalizeAndSend();
+            
+            console.log("started recognising")
           }, 2000); // 2 seconds silence
         }
       };
+
+      recognitionRef.current.onend = () => {
+        console.log("🔄 Trigger recognition ended. Restarting...");
+        recognitionRef.current.start();
+      };
   
-      recognition.start();
-      recognitionRef.current = recognition;
+      recognitionRef.current.start();
+   
       setListening(true);
       console.log("🎤 Now actively listening for questions...");
   };
@@ -113,6 +136,7 @@ const App = () => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((blob) => {
         console.log("✅ Image captured and stored.");
+        setIsCaptured(true) ;
         capturedImageRef.current = blob;
       }, "image/png");
     }
@@ -123,20 +147,27 @@ const App = () => {
     console.log("Stored Image:", capturedImageRef.current);
     console.log("Stored Query:", queryRef.current);
 
-    if (!capturedImageRef.current) {
-      speakText("No image found. Please capture an image first.");
-      console.error("❌ Error: No image found.");
-      return;
-    }
-
+    
     if (!queryRef.current.trim()) {
       speakText("No query found. Please say your query first.");
       console.error("❌ Error: No query found.");
       return;
     }
 
+    if (!capturedImageRef.current) {
+      speakText("sending only query");
+      console.error("sending only query");
+      setTimeout(() => {
+        sendQuery(queryRef.current)
+        queryRef.current = "";
+        
+      }, 1000);
+
+
+      
+    }else{
     sendData(capturedImageRef.current, queryRef.current);
-    queryRef.current = "";
+    queryRef.current = "";}
   };
 
   const sendData = async (image, queryText) => {
@@ -150,6 +181,24 @@ const App = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("✅ Response received:", response.data);
+
+      speakText(response.data.response);
+    } catch (error) {
+      console.error("❌ Error sending data:", error);
+    }
+  };
+  const sendQuery = async ( queryText) => {
+    const formData = new FormData();
+    
+    formData.append("query", queryText);
+
+    try {
+      console.log("🚀 Sending image and query to backend...");
+      const response = await axios.post(import.meta.env.VITE_API_URL_QUERY, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("✅ Response received:", response.data);
+
       speakText(response.data.response);
     } catch (error) {
       console.error("❌ Error sending data:", error);
@@ -164,8 +213,11 @@ const App = () => {
 
   return (
     <div>
-      <h1>Speech & OCR Web App</h1>
-      <p>Status: {listening ? "Listening for questions..." : "Waiting for trigger word..."}</p>
+      <h1>Speech Web App</h1>
+      <h4>Trigger Word - Hey Assitant</h4>
+      <h4>To capture Img - Capture</h4>
+      <h5>Then say the queries you want to ask</h5>
+      <p>Status: {listening ? "Listening for questions..." : "Waiting for trigger word..."} {isCaptured? "an image is alredy captured say capture again to capture a new image " :"no image captured " } </p>
       <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }}></video>
     </div>
   );

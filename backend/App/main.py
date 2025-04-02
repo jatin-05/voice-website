@@ -95,6 +95,54 @@ def process_image(image_bytes, question):
         return f"Error: {str(e)}"
 
 
+def process_query( question):
+    """Convert an image to base64 and send it to Together API with the query."""
+    try:
+       
+        # Create message payload
+        message = [
+            {
+                "role": "user",
+                "content": [
+                    # {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
+                    {"type": "text", "text": question}
+                ]
+            }
+        ]
+
+        print("🚀 Sending image & query to Together API...")
+
+        # API call
+        response = client.chat.completions.create(
+            model="meta-llama/Llama-Vision-Free",
+            messages=message,
+            max_tokens=200,
+            temperature=0.4,
+            top_p=0.7,
+            top_k=50,
+            repetition_penalty=1,
+            stop=["<|eot_id|>", "<|eom_id|>"],
+            stream=True
+        )
+
+        # Process response
+        answer = ""
+        for token in response:
+            try:
+                if hasattr(token, 'choices') and token.choices:
+                    content = token.choices[0].delta.content
+                    if content:
+                        answer += content
+            except (IndexError, AttributeError):
+                continue
+
+        return answer.strip() if answer else "No valid response received."
+
+    except Exception as e:
+        print(f"❌ Error processing image: {str(e)}")
+        return f"Error: {str(e)}"
+
+
 @app.post("/process")
 async def process(file: UploadFile = File(...), query: str = Form(...)):
     try:
@@ -103,6 +151,20 @@ async def process(file: UploadFile = File(...), query: str = Form(...)):
 
         # Process the image and query
         extracted_text = process_image(image_bytes, query)
+
+        return {"response": extracted_text}
+
+    except Exception as e:
+        print(f"❌ Server Error: {str(e)}")
+        return {"error": f"Server error: {str(e)}"}
+    
+
+@app.post("/processQuery")
+async def processQuery( query: str = Form(...)):
+    try:
+
+        # Process the image and query
+        extracted_text = process_query( query)
 
         return {"response": extracted_text}
 
